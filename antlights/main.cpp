@@ -1,0 +1,67 @@
+#include <stdio.h>
+#include <stdexcept>
+#include <cstdlib>
+#include <iostream>
+
+#include "LedFillGear.h"
+#include "LedBlinkGear.h"
+#include "SecondHand.h"
+#include "LedSweepGear.h"
+
+void doTest() {
+  int channel=0;
+
+  // turn up to [maxleds] lights off, first
+  int maxleds=32;
+  std::cout << "blanking " << maxleds << " on channel " << channel << std::endl;
+  lpd8806* largebar=new lpd8806(channel,maxleds);
+  largebar->fill(0,0,0);
+  largebar->update();
+  delete largebar;
+
+  // now define bar with smaller # of lights for lightshow
+  int leds=24;
+  lpd8806* bar=new lpd8806(leds,channel);
+  std::cout << "gamma table:"<< std::endl;
+  for(int i=0;i<16;i++) {
+    for(int j=0;j<16;j++) {
+      std::cout << bar->getGamma(i*16+j) << " ";
+    }
+    std::cout << std::endl;
+  }
+  std::cout << "demo mode, leds = " << leds << std::endl;
+  bar->demo(10);
+  delete bar;
+
+  SecondHand* spinner=new SecondHand(50);
+  LedRefreshGear::create(24);
+  LedBlinkGear* turnLeft=new LedBlinkGear(7,2,255,0,0,50,60,25);
+  LedSweepGear* headlight=new LedSweepGear(8,8,40,50);
+
+  spinner->insertGear(LedRefreshGear::getSingle());
+  spinner->insertGear(new LedFillGear(0,24,0,0,0,0));
+  spinner->insertGear(headlight);
+  //spinner->insertGear(turnLeft);
+  spinner->start();
+  sleep(5);
+  turnLeft->stop(false);
+  sleep(5);
+  headlight->stop(false);
+  sleep(1);
+  spinner->stop();
+
+
+  std::cout << "done, exit" << std::endl;
+
+}
+
+int main() {
+  try {
+    doTest();
+  } catch (const std::exception &e) {
+    std::cout << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
+}
+
