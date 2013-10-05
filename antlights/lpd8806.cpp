@@ -68,13 +68,19 @@ void lpd8806::setRange(int start,int len,
     this->set(led,r,g,b);
   }
 }
-void lpd8806::setAllRGB(unsigned char* rgbBuf) { // must be getLength*3 bytes!
-  for(int led=0;led< this->getLength();led++) {
-    this->set(led,
-	      rgbBuf[3*led+0],
-	      rgbBuf[3*led+1],
-	      rgbBuf[3*led+2]);
+void lpd8806::setAllRGB(const unsigned char* rgbBuf,
+			bool transparent0) { // must be getLength*3 bytes!
+  for(int i=0;i< this->getLength();i++) {
+    unsigned char r,g,b;
+    r=rgbBuf[3*i+0];
+    g=rgbBuf[3*i+1];
+    b=rgbBuf[3*i+2];
+    
+    if(r!=0 || g!=0 || b!=0 || (!transparent0)) {
+      this->set(i,r,g,b);
+    }
   }
+  
 }
 void lpd8806::update() {
   int fail=0;

@@ -3,10 +3,9 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "LedFillGear.h"
-#include "LedBlinkGear.h"
 #include "SecondHand.h"
-#include "LedSweepGear.h"
+#include "lpd8806.h"
+#include "antlights.h"
 
 void doTest() {
   int channel=0;
@@ -33,23 +32,8 @@ void doTest() {
   bar->demo(10);
   delete bar;
 
-  SecondHand* spinner=new SecondHand(50);
-  LedRefreshGear::create(24);
-  LedBlinkGear* turnLeft=new LedBlinkGear(7,2,255,0,0,50,60,25);
-  LedSweepGear* headlight=new LedSweepGear(8,8,40,50);
-
-  spinner->insertGear(LedRefreshGear::getSingle());
-  spinner->insertGear(new LedFillGear(0,24,0,0,0,0));
-  spinner->insertGear(headlight);
-  //spinner->insertGear(turnLeft);
-  spinner->start();
-  sleep(5);
-  turnLeft->stop(false);
-  sleep(5);
-  headlight->stop(false);
-  sleep(1);
-  spinner->stop();
-
+  startLightingThread();
+  commandline(NULL);
 
   std::cout << "done, exit" << std::endl;
 

@@ -26,11 +26,12 @@ class Gear {
   void tick(SecondHandTick* source);
 
   Gear* start();
-  Gear* stop(bool keepAngle);
+  Gear* stop(bool keepAngle=true);
+  Gear* toggle(bool recenterOnStart);
   Gear* recenter();
   bool isActive();
 
-  char getRunOrder();
+  int getRunOrder();
   double getAngle();
   int getSector(int sectors);
 

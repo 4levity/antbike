@@ -5,14 +5,11 @@
 #include "LedRefreshGear.h"
 #include "lpd8806.h"
 
-LedSweepGear::LedSweepGear(int start,int len,int rpm,int order)
+LedSweepGear::LedSweepGear(int ledStart,int len,int border,int rpm,int order)
   : Gear(rpm,order) {
-  this->start=start;
+  this->ledStart=ledStart;
   this->len=len;
-  
-  int borderTry=3;
-  int border=start>borderTry && start+len+borderTry<LEDSTRIP->getLength() ? borderTry : 0;
-  int canvasStart=start-border;
+  int canvasStart=ledStart-border;
   int canvasLen=len+(2*border);
   int canvasEnd=canvasStart+canvasLen;
   this->mapLen=(canvasLen*2)-2;
@@ -31,16 +28,23 @@ LedSweepGear::LedSweepGear(int start,int len,int rpm,int order)
       map[canvasLen+i-1]=-1;
     }
   }
-
-  std::cout<<"map:";
-  for(int i=0;i<mapLen;i++) {
-    std::cout<<" ["<<i<<"]="<<map[i];
-  }
-			      std::cout<<std::endl;
+  this->r=0xff;
+  this->g=0xff;
+  this->b=0xff;
+  this->trail=5;
 }
 
 LedSweepGear::~LedSweepGear() {
   delete map;
+}
+
+LedSweepGear* LedSweepGear::configure(unsigned char r,unsigned char g,unsigned char b,
+			     unsigned char trail) {
+  this->r=r;
+  this->g=g;
+  this->b=b;
+  this->trail=trail;
+  return this;
 }
 
 void LedSweepGear::setOnMap(int led,unsigned char bright) {
@@ -48,19 +52,21 @@ void LedSweepGear::setOnMap(int led,unsigned char bright) {
     led+=mapLen;
   
   if(map[led]>=0) {
-    LEDSTRIP->set(map[led],bright,bright,bright);
+    LEDSTRIP->set(map[led],
+		  ((int)bright*(int)r)/255.0,
+		  ((int)bright*(int)g)/255.0,
+		  ((int)bright*(int)b)/255.0);
+      //		  (((int)bright*(int)b)/255.0)*(223.0/255.0)+32);
+		  //		  ((int)bright*(int)b)/255.0);
   }
 }
 
 void LedSweepGear::process() {
-  LEDSTRIP->setRange(start,len,0,0,0);
+  LEDSTRIP->setRange(ledStart,len,0,0,0);
   int sector=this->getSector(this->mapLen);
-  this->setOnMap(sector,255);
-  this->setOnMap(sector-1,210);
-  this->setOnMap(sector-2,165);
-  this->setOnMap(sector-3,125);
-  this->setOnMap(sector-4,90);
-  this->setOnMap(sector-5,50);
+  for(int i=0;i<=trail;i++) {
+    this->setOnMap(sector-i,255-((255.0/trail)*i));
+  }
 
   //std::cout<<"sector "<<sector<<", position "<<map[sector]<<std::endl;
   
@@ -68,6 +74,7 @@ void LedSweepGear::process() {
 
 char* LedSweepGear::getName() {
   static char name[80];
-  sprintf(name,"Sweep %d->%d",start,start+len-1);
+  sprintf(name,"Sweep %d-%d [%02X%02X%02X] ...%d...",
+	  ledStart,ledStart+len-1,r,g,b,trail);
   return name;
 }

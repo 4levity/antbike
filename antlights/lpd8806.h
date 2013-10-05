@@ -43,7 +43,7 @@ class lpd8806 {
   void set(int led,unsigned char r,unsigned char g,unsigned char b);
   void update();
   void setRange(int start,int len,unsigned char r,unsigned char g,unsigned char b);
-  void setAllRGB(unsigned char* rgbBuf);
+  void setAllRGB(const unsigned char* rgbBuf,bool transparent0=false);
 
   int getGamma(unsigned char v);
   int getLength();

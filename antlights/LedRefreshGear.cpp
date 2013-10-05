@@ -4,7 +4,7 @@
 
 LedRefreshGear* LedRefreshGear::ledGear = NULL;
 
-LedRefreshGear::LedRefreshGear(int leds,int channel) : Gear(1,127) {
+LedRefreshGear::LedRefreshGear(int leds,int channel) : Gear(1,999) {
   this->ledStrip=new lpd8806(leds,channel);
   this->ledStrip->fill(0,0,0);
   this->ledStrip->update();

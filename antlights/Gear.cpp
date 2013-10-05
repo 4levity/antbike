@@ -94,6 +94,18 @@ Gear* Gear::recenter() {
   return this;
 }
 
+Gear* Gear::toggle(bool recenterOnStart) {
+  pthread_mutex_lock(&(this->gearMutex));
+  ////////////////////////////////// CRITICAL SECTION
+  this->active = !(this->active);
+  if(this->active && recenterOnStart) {
+    this->lastAngle=0.0;
+    this->centerOffsetTick=-1.0; // recalculate
+  }
+  pthread_mutex_unlock(&(this->gearMutex));    
+  return this;
+}
+
 bool Gear::isActive() {
   pthread_mutex_lock(&(this->gearMutex));
   ////////////////////////////////// CRITICAL SECTION
@@ -102,7 +114,7 @@ bool Gear::isActive() {
   return a; 
 }
 
-char Gear::getRunOrder() {
+int Gear::getRunOrder() {
   return this->runOrder;
 }
 
