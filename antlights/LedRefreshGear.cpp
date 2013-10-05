@@ -23,6 +23,14 @@ LedRefreshGear* LedRefreshGear::create(int leds,int channel) {
   return LedRefreshGear::ledGear;
 }
 
+void LedRefreshGear::destroy() {
+  ledGear->stop();
+  if(LedRefreshGear::ledGear!=NULL) {
+    delete LedRefreshGear::ledGear;
+    LedRefreshGear::ledGear=NULL;
+  }
+}
+
 LedRefreshGear* LedRefreshGear::getSingle() {
   return LedRefreshGear::ledGear;
 }
@@ -38,4 +46,10 @@ void LedRefreshGear::process() {
 char* LedRefreshGear::getName() {
   static char name[]="LED-refresh";
   return name;
+}
+
+void LedRefreshGear::onStop () {
+  std::cout<<"LED refresh stop, turning off strip"<<std::endl;
+  this->ledStrip->fill(0,0,0);
+  this->ledStrip->update();
 }

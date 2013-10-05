@@ -32,8 +32,8 @@ void doTest() {
   bar->demo(10);
   delete bar;
 
-  startLightingThread();
-  commandline(NULL);
+  startThreads();
+  joinThreads();
 
   std::cout << "done, exit" << std::endl;
 

@@ -82,6 +82,9 @@ Gear* Gear::stop(bool keepAngle) {
   } 
   ////////////////////////////////// CRITICAL SECTION
   pthread_mutex_unlock(&(this->gearMutex));    
+
+  this->onStop();
+
   return this;
 }
 
@@ -129,4 +132,9 @@ double Gear::getAngle() {
 
 int Gear::getSector(int sectors) {
   return (int)((getAngle() / (2.0 * M_PI)) * sectors);
+}
+
+void Gear::onStop() 
+{ 
+  ;
 }

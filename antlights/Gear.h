@@ -37,6 +37,7 @@ class Gear {
 
   virtual void process() = 0; // called at every tick while Gear is active
   virtual char* getName() = 0;
+  virtual void onStop();
 };
 
 #endif

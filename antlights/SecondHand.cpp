@@ -93,12 +93,18 @@ void SecondHand::ticker() {
       targetTime.tv_nsec= (target_us % 1000000) * 1000;
     }
     clock_gettime(CLOCK_MONOTONIC, &doneTime);
-    long estSleepFor=usDiff(doneTime,targetTime);
+    //long estSleepFor=usDiff(doneTime,targetTime);
     /*std::cout<<"slept for "<<this->lastMeasuredInterval_us<<"us, now tick#"<< thisTick <<" of "<< this->ticksPerMinute
 	     <<" (misses="<<this->missedTicks<<")"
 	     << " sleep for " << estSleepFor << "us"
 	     << std::endl;*/
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &targetTime, NULL);
+  }
+
+  for(Gear* g=this->firstGear;g!=NULL;g=g->getNext()) {
+    if(g->isActive()) {
+      g->stop(true);
+    }
   }
 }
 
@@ -177,7 +183,7 @@ SecondHand* SecondHand::start() {
   ///////////////////////////////////// CRITICAL SECTION
   pthread_mutex_unlock(&(this->tickerMutex));    
 
-  int err= pthread_create(&this->tickerThread,NULL,&runTickerThread,(void*)this);
+  int err= pthread_create(&(this->tickerThread),NULL,&runTickerThread,(void*)this);
   if(err!=0) {
     throw new std::runtime_error("failed to create ticker thread");
   }

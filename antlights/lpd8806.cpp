@@ -45,6 +45,8 @@ lpd8806::lpd8806(int leds, int channel) {
   this->device = wiringPiSPISetup(channel, 500000); //default SPI clock speed
 }
 lpd8806::~lpd8806() {
+  this->fill(0,0,0);
+  this->update();
   close(this->device);
 }
 void lpd8806::fill(unsigned char r,unsigned char g,unsigned char b) {

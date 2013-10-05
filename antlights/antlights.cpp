@@ -1,6 +1,10 @@
 #include <iostream>
+#include <iomanip>
 #include <cstdlib>
 #include <stdexcept>
+#include <wiringSerial.h>
+#include <pthread.h>
+#include <termios.h>
 
 #include "LedBlinkGear.h"
 #include "SecondHand.h"
@@ -8,10 +12,18 @@
 #include "LedRefreshGear.h"
 #include "antlights.h"
 
+
+pthread_t serialThread;
+pthread_t commandLineThread;
+
+/* bitmaps and various things are all hard coded for a string of 24 leds */
+#define LEDS 24
+bool shutdown=false;
+
 LedBlinkGear* turnLeft;
 #define TURNSIGNAL_LAYER 500
-#define TURNSIGNAL_BPM 120
-const unsigned char turnSignalLeftRGB[] = {
+#define TURNSIGNAL_BPM 60
+const unsigned char turnSignalLeftRGB[LEDS*3] = {
   0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,
   0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,
   0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,
@@ -20,7 +32,7 @@ const unsigned char turnSignalLeftRGB[] = {
   0xFF,0xFF,0x0,0xFF,0xFF,0x0,0xFF,0xFF,0x0,0x0,0x0,0x0};
 
 LedBlinkGear* turnRight;
-const unsigned char turnSignalRightRGB[] = {
+const unsigned char turnSignalRightRGB[LEDS*3] = {
   0x0,0x0,0x0,  0xFF,0xFF,0x0,0xFF,0xFF,0x0,0xFF,0xFF,0x0,
   0x0,0x0,0x0,  0x0,0x0,0x0,  0xFF,0xFF,0x0, 0xFF,0xFF,0x0,
   0xFF,0xFF,0x0,0xFF,0xFF,0x0,0x0,0x0,0x0,  0x0,0x0,0x0,
@@ -30,7 +42,7 @@ const unsigned char turnSignalRightRGB[] = {
 
 LedBlinkGear* brakes;
 #define BRAKELIGHTS_LAYER 400
-const unsigned char brakesRGB[] = {
+const unsigned char brakesRGB[LEDS*3] = {
   0xFF,0x0,0x0, 0xFF,0x00,0x0,0x0,0x0,0x0,  0x0,0x0,0x0,
   0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,
   0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,  0x0,0x0,0x0,
@@ -39,8 +51,8 @@ const unsigned char brakesRGB[] = {
   0x0,0x0,0x0,  0x0,0x0,0x0,  0xFF,0x0,0x0, 0xFF,0x0,0x0};
 
 LedBlinkGear* runningLights;
-#define RUNNINGLIGHTS_LAYER 10
-const unsigned char runningLightsRGB[] = {
+#define RUNNINGLIGHTS_LAYER 80
+const unsigned char runningLightsRGB[LEDS*3] = {
   0x0,0x0,0x0,   0x3F,0x00,0x0, 0x3f,0x3f,0x0, 0x0,0x0,0x0,
   0x0,0x0,0x0,   0x0,0x0,0x0,   0x0,0x0,0x0,   0x3f,0x3f,0x0,
   0x0,0x0,0x0,   0x0,0x0,0x0,   0x1f,0x1f,0x1f,0x7f,0x7f,0x7f,
@@ -50,7 +62,7 @@ const unsigned char runningLightsRGB[] = {
 
 LedBlinkGear* brights;
 #define HEADLIGHTS_LAYER 100
-const unsigned char brightsRGB[] = {
+const unsigned char brightsRGB[LEDS*3] = {
   0x0,0x0,0x0,   0x00,0x00,0x0, 0x00,0x00,0x0, 0x0,0x0,0x0,
   0x0,0x0,0x0,   0x0,0x0,0x0,   0x0,0x0,0x0,   0x00,0x00,0x0,
   0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
@@ -65,36 +77,37 @@ const unsigned char brightsRGB[] = {
 LedSweepGear* kitt;
 #define SECURITY_LAYER 50
 #define SECURITY_TRAIL 3
-#define SECURITY_BORDER 2
-#define SECURITY_RPM 35
+#define SECURITY_BORDER 20
+#define SECURITY_RPM 20
 LedSweepGear* security;
 
-#define LED_REFRESH_RATE_HZ 50 
+LedBlinkGear* background;
+
+#define LED_REFRESH_RATE_HZ 24
 SecondHand* LedSpinner;
 
-void startLightingThread() {  
- 
-  LedSpinner=new SecondHand(LED_REFRESH_RATE_HZ);
-  
+int fdSerial=-1;
+
+
+void createGears() {
   // black background at layer 0, started
-  LedSpinner->insertGear(new LedBlinkGear(0,24,0,0,0, 0, 1, 100));
+  LedSpinner->insertGear(background=(new LedBlinkGear(0,24,0,0,0, 0, 1, 100)));
 
   // led refresher (layer 999), started
   LedRefreshGear::create(24);
   LedSpinner->insertGear(LedRefreshGear::getSingle());
 
   // available light effects, stopped
-  LedSpinner->insertGear(security=(new LedSweepGear(0,24,
+  LedSpinner->insertGear(security=(new LedSweepGear(0,LEDS,
 						    SECURITY_BORDER,
 						    SECURITY_RPM,
 						    SECURITY_LAYER))
-			 ->configure(0x7f,0,0,4));
+			 ->configure(0x7f,0,0,SECURITY_TRAIL));//dim red
   security->stop();
-  LedSpinner->insertGear(kitt=(new LedSweepGear(8,8,
+  LedSpinner->insertGear(kitt=(new LedSweepGear(LEDS/3,LEDS/3,
 						KITT_BORDER,KITT_RPM,
 						KITT_LAYER))
-			 ->configure(0xff,0xff,0xff,KITT_TRAIL)//white
-			 );
+			 ->configure(0xff,0xff,0xff,KITT_TRAIL));//white
   kitt->stop();
   LedSpinner->insertGear(runningLights=(new LedBlinkGear(runningLightsRGB,
 							 RUNNINGLIGHTS_LAYER,
@@ -116,14 +129,61 @@ void startLightingThread() {
 							 TURNSIGNAL_LAYER,
 						     TURNSIGNAL_BPM,50)));
   turnRight->stop();
-			 
-  LedSpinner->start();
+
 }
 
-void* commandline(void* arg) {
-  bool quit=false;
+void destroyGears() {
+  delete turnLeft;
+  delete turnRight;
+  delete brights;
+  delete brakes;
+  delete runningLights;
+  delete kitt;
+  delete security;
+  delete background;
+  LedRefreshGear::destroy();
+}
+
+#define SERIALBUFLEN 20
+void* serialComms(void* arg) {
+  fdSerial = serialOpen("/dev/ttyAMA0",115200);
+  if(fdSerial == -1) {
+    std::cout <<"error opening serial port"<<std::endl;
+  } else {
+    int lastCh,bufLen;
+    unsigned char buf[SERIALBUFLEN];
+    //struct termios options;
+    //    tcgetattr(fdSerial, &options);
+    //options.c_cc[VTIME]=100;// 5 x 0.1 sec = 0.5 sec timeout
+    //tcsetattr(fdSerial, TCSANOW, &options);
+
+    while(!shutdown) {
+      bufLen=0;
+      do {
+	lastCh=serialGetchar(fdSerial);
+	if(lastCh>0) {
+	  buf[bufLen]=((unsigned char)lastCh) % 256;
+	  bufLen++;
+	}
+      } while(lastCh>0 && bufLen<SERIALBUFLEN && !shutdown);
+      for(int i=0;i<bufLen;i++) {
+	// process buffer
+	std::cout << buf[i]<<std::flush;
+      }
+      if(lastCh<=0) {
+	// timeout could indicate problem with mcu
+	//std::cout<<"|timeout|"<<std::flush;
+      }
+    }
+    serialClose(fdSerial);
+  }
+  return NULL;
+}
+
+void* commandLine(void* arg) {
   std::string cmd;
-  while(!quit) {
+  std::cout<<"manual lighting commands, ? for help"<<std::endl;
+  while(!shutdown) {
     std::cout <<"antlight:";
     getline(std::cin, cmd);
     if(cmd.compare(0,1,"b")==0) {
@@ -157,10 +217,26 @@ void* commandline(void* arg) {
 		<< (security->toggle(true)->isActive()?"on":"off" )
 		<< std::endl;
     } else if(cmd.compare(0,1,"q")==0) {
-      quit=true;
-      std::cout << "quit " 
+      shutdown=true;;
+      std::cout << "quit (please wait) " 
 		<< std::endl;
     }
   }
   return NULL;
+}
+
+void startThreads() { 
+  LedSpinner=new SecondHand(LED_REFRESH_RATE_HZ);  
+  createGears();
+  LedSpinner->start();
+
+  pthread_create(&serialThread,NULL,&serialComms,NULL);
+  pthread_create(&commandLineThread,NULL,&commandLine,NULL);
+}
+
+void joinThreads() {
+  // 
+  pthread_join(serialThread,NULL);
+  pthread_join(commandLineThread,NULL);
+  LedSpinner->stop();
 }

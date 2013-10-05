@@ -1,2 +1,2 @@
-void startLightingThread();
-void* commandline(void* arg);
+void startThreads();
+void joinThreads();
